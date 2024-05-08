@@ -76,7 +76,7 @@ int64_t trust_tc_iter(GraphEngine &graph_engine)
                     intersection_id(found.edgelist, node_out_nbrhood);
                 count += (int64_t)(intersect.size());
             }
-
+            found.clear();
             out_cursor->next(&found);
         }
         out_cursor->close();
@@ -127,6 +127,7 @@ int64_t cycle_tc_iter(GraphEngine &graph_engine)
                     }
                 }
             }
+            found.clear();
             out_cursor->next(&found);
         }
         out_cursor->close();

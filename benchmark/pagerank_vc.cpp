@@ -53,7 +53,6 @@ pvector<ScoreT> pagerank(GraphEngine& graph_engine,
             GraphBase* graph = graph_engine.create_graph_handle();
             InCursor* in_cursor = graph->get_innbd_iter();
             in_cursor->set_key_range(graph_engine.get_key_range(i));
-
             adjlist found;
             in_cursor->next(&found);
 
@@ -71,6 +70,7 @@ pvector<ScoreT> pagerank(GraphEngine& graph_engine,
                 error += fabs(dst[found.node_id] - old_score);
                 src[found.node_id] = dst[found.node_id] / deg[found.node_id];
 
+                found.clear();
                 in_cursor->next(&found);
             }
 

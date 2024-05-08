@@ -15,8 +15,8 @@ target_link_libraries(pagerank PUBLIC ${NAME_LIB} graph_utils)
 add_executable(pr_iter_map pagerank_iter_map.cpp)
 target_link_libraries(pr_iter_map PUBLIC ${NAME_LIB} graph_utils)
 
-#add_executable(pr_ec pagerank_ec.cpp)
-#target_link_libraries(pr_ec PUBLIC ${NAME_LIB} graph_utils)
+add_executable(pr_ec pagerank_ec.cpp)
+target_link_libraries(pr_ec PUBLIC ${NAME_LIB} graph_utils)
 
 add_executable(pr_vc pagerank_vc.cpp)
 target_link_libraries(pr_vc PUBLIC ${NAME_LIB} graph_utils)
@@ -51,8 +51,8 @@ target_link_libraries(cc PUBLIC ${NAME_LIB} graph_utils)
 add_executable(cc_parallel cc_parallel.cpp)
 target_link_libraries(cc_parallel PUBLIC ${NAME_LIB} graph_utils)
 
-# add_executable(cc_parallel_ec cc_parallel_ec.cpp)
-# target_link_libraries(cc_parallel_ec PUBLIC ${NAME_LIB} graph_utils)
+add_executable(cc_parallel_ec cc_parallel_ec.cpp)
+target_link_libraries(cc_parallel_ec PUBLIC ${NAME_LIB} graph_utils)
 
 ####################################################################################
 ############ SSSP (GAPBS)  #########################################################
@@ -92,12 +92,12 @@ target_link_libraries(pr_iter_getout PUBLIC ${NAME_LIB} graph_utils)
 #target_link_libraries(cc_parallel_ec PUBLIC ${NAME_LIB} graph_utils)
 #
 
-#
-#add_executable(iteration_vc iteration_vc.cpp)
-#target_link_libraries(iteration_vc PUBLIC ${NAME_LIB} graph_utils)
-#
-#add_executable(iteration_ec iteration_ec.cpp)
-#target_link_libraries(iteration_ec PUBLIC ${NAME_LIB} graph_utils)
+
+add_executable(iteration_vc iteration_vc.cpp)
+target_link_libraries(iteration_vc PUBLIC ${NAME_LIB} graph_utils)
+
+# add_executable(iteration_ec iteration_ec.cpp)
+# target_link_libraries(iteration_ec PUBLIC ${NAME_LIB} graph_utils)
 
 
 
@@ -107,4 +107,4 @@ target_link_libraries(pr_iter_getout PUBLIC ${NAME_LIB} graph_utils)
 # add_executable(bfs_parallel bfs_parallel.cpp)
 # target_link_libraries(bfs_parallel PUBLIC ${NAME_LIB} graph_utils)
 
-# add_subdirectory(microbenchmarks)
+add_subdirectory(microbenchmarks)

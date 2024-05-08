@@ -17,6 +17,7 @@ const size_t kMaxBin = numeric_limits<size_t>::max() / 2;
 const size_t kBinSizeThreshold = 1000;
 const int THREAD_NUM = omp_get_max_threads();
 
+
 inline void RelaxEdges(GraphBase *g,
                        node_id_t u,
                        edgeweight_t delta,
@@ -27,7 +28,7 @@ inline void RelaxEdges(GraphBase *g,
     for (edge e : out_edges)
     {
         edgeweight_t old_dist = dist[e.dst_id];
-        edgeweight_t new_dist = dist[u] + e.edge_weight;
+        edgeweight_t new_dist = dist[u] + 1;
         while (new_dist < old_dist)
         {
             if (compare_and_swap(dist[e.dst_id], old_dist, new_dist))
@@ -107,9 +108,9 @@ pvector<edgeweight_t> DeltaStep(GraphEngine &graph_engine,
 #pragma omp barrier
 #pragma omp single nowait
             {
-                t.stop();
-                PrintStep(curr_bin_index, t.t_millis(), curr_frontier_tail);
-                t.start();
+                // t.stop();
+                // // PrintStep(curr_bin_index, t.t_millis(),
+                // curr_frontier_tail); t.start();
                 curr_bin_index = kMaxBin;
                 curr_frontier_tail = 0;
             }
@@ -127,7 +128,7 @@ pvector<edgeweight_t> DeltaStep(GraphEngine &graph_engine,
         }
 #pragma omp single
         {
-            cout << "took " << iter << " iterations" << endl;
+            // cout << "took " << iter << " iterations" << endl;
         }
         graph->close(false);
     }
@@ -170,10 +171,10 @@ int main(int argc, char *argv[])
 
     long double total_time = 0;
     sssp_info info(0);
-    for (int i = 0; i < opts.num_trials; i++)
+    for (int i = 0; i < 10; i++)
     {
         t.start();
-        DeltaStep(graphEngine,
+            DeltaStep(graphEngine,
                   random_nodes.at(i),
                   opts.delta_value,
                   maxNodeID,

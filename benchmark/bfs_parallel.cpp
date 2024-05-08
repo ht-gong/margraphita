@@ -207,7 +207,7 @@ pvector<NodeID> DOBFS(GraphEngine *graph_engine,
     pvector<NodeID> parent = InitParent(graph_engine, max_node_id, thread_num);
     t.stop();
 
-    printf("%5s%23.5Lf\n", "i", t.t_secs());
+    //printf("%5s%23.5Lf\n", "i", t.t_secs());
 
     parent[source] = source;
     SlidingQueue<NodeID> queue(num_nodes);
@@ -228,7 +228,7 @@ pvector<NodeID> DOBFS(GraphEngine *graph_engine,
             t.start();
             QueueToBitmap(queue, front);
             t.stop();
-            printf("%5s%23.5Lf\n", "e", t.t_secs());
+            //printf("%5s%23.5Lf\n", "e", t.t_secs());
             awake_count = queue.size();
             queue.slide_window();
             do
@@ -239,14 +239,14 @@ pvector<NodeID> DOBFS(GraphEngine *graph_engine,
                     BUStep(graph_engine, parent, front, curr, thread_num);
                 front.swap(curr);
                 t.stop();
-                printf("%5s%23.5Lf\n", "bu", t.t_secs());
+                //printf("%5s%23.5Lf\n", "bu", t.t_secs());
 
             } while ((awake_count >= old_awake_count) ||
                      (awake_count > num_nodes / beta));
             t.start();
             BitmapToQueue(graph_engine, front, queue, thread_num);
             t.stop();
-            printf("%5s%23.5Lf\n", "c", t.t_secs());
+            //printf("%5s%23.5Lf\n", "c", t.t_secs());
             scout_count = 1;
         }
         else
@@ -256,7 +256,7 @@ pvector<NodeID> DOBFS(GraphEngine *graph_engine,
             scout_count = TDStep(graph_engine, parent, queue);
             queue.slide_window();
             t.stop();
-            printf("%5s%23.5Lf\n", "td", t.t_secs());
+            //printf("%5s%23.5Lf\n", "td", t.t_secs());
         }
     }
 
@@ -287,15 +287,20 @@ int main(int argc, char *argv[])
     graphEngine.calculate_thread_offsets();
     t.stop();
     std::cout << "Graph loaded in " << t.t_micros() << std::endl;
-
+    
+    
+    for(int i = 0 ; i < 10; i++) {
     t.start();
-    GraphBase *g = graphEngine.create_graph_handle();
-    node_id_t num_nodes = g->get_num_nodes();
-    node_id_t max_node_id = g->get_max_node_id();
-    node source = g->get_random_node();
-    g->close(false);
-    DOBFS(&graphEngine, source.id, num_nodes, max_node_id, THREAD_NUM, 15, 18);
-    t.stop();
-    std::cout << "BFS completed in " << t.t_micros() << std::endl;
+        GraphBase *g = graphEngine.create_graph_handle();
+        node_id_t num_nodes = g->get_num_nodes();
+        node_id_t max_node_id = g->get_max_node_id();
+        node source = node{.id = 1};
+        g->close(false);
+    
+        DOBFS(&graphEngine, source.id, num_nodes, max_node_id, THREAD_NUM, 15, 18);
+        t.stop();
+        std::cout << "BFS completed in " << t.t_micros() << std::endl;
+    }
+    
     graphEngine.close_graph();
 }

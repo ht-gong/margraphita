@@ -74,6 +74,7 @@ pvector<node_id_t> ShiloachVishkin(GraphEngine& g,
                         comp[high_comp] = low_comp;
                     }
                 }
+                u.clear();
                 out_nbd_cur->next(&u);
             }
             out_nbd_cur->close();
@@ -115,7 +116,7 @@ std::vector<std::pair<ValT, KeyT>> TopK(
     return top_k;
 }
 
-void PrintCompStats(GraphBase* graph,
+void PrintCompStats(GraphEngine& graphEngine,
                     const pvector<node_id_t>& comp,
                     node_id_t numNodes,
                     node_id_t maxNodeID)
@@ -135,6 +136,19 @@ void PrintCompStats(GraphBase* graph,
     cout << k << " biggest clusters" << endl;
     for (auto kvp : top_k) cout << kvp.second << ":" << kvp.first << endl;
     cout << "There are " << count.size() << " components" << endl;
+
+    GraphBase* graph = graphEngine.create_graph_handle();
+    int cnt = 0;
+    for (node_id_t i = 0; i < maxNodeID; i++)
+    {
+        if (comp[i] == 0 && graph->has_node(i) &&
+            graph->get_out_edges(i).size() != 0)
+        {
+            cout << i << ", ";
+            if (cnt++ > 1000) break;
+        }
+    }
+    graph->close();
 }
 
 void print_comp_to_file(const pvector<node_id_t>& comp)
@@ -178,7 +192,7 @@ int main(int argc, char* argv[])
         std::cout << "CC took " << t.t_secs() << " s" << std::endl;
         total_seconds += t.t_secs();
         if (i == 0 && opts.print_stats == true)
-            PrintCompStats(graph, result, numNodes, maxNodeID);
+            PrintCompStats(graphEngine, result, numNodes, maxNodeID);
     }
     std::cout << "Average CC took " << total_seconds / opts.num_trials << " s"
               << std::endl;

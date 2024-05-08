@@ -21,6 +21,7 @@
 #include "pvector.h"
 #include "standard_graph.h"
 #include "times.h"
+#include "omp.h"
 
 typedef float ScoreT;
 const float kDamp = 0.85;
@@ -31,12 +32,13 @@ pvector<ScoreT> pagerank(GraphEngine& graph_engine,
                          double epsilon = 0)
 {
     GraphBase* g = graph_engine.create_graph_handle();
+    node_id_t max_node_id = g->get_max_node_id();
     node_id_t num_nodes = g->get_num_nodes();
     g->close();
 
-    pvector<ScoreT> src(num_nodes, 0);
-    pvector<ScoreT> dst(num_nodes, 1 / num_nodes);
-    pvector<node_id_t> deg(num_nodes, 0);
+    pvector<ScoreT> src(max_node_id, 0);
+    pvector<ScoreT> dst(max_node_id, 1 / num_nodes);
+    pvector<node_id_t> deg(max_node_id, 0);
 
 #pragma omp parallel for
     for (int i = 0; i < thread_num; i++)
@@ -80,7 +82,7 @@ pvector<ScoreT> pagerank(GraphEngine& graph_engine,
         {
             GraphBase* graph = graph_engine.create_graph_handle();
             EdgeCursor* edge_cursor = graph->get_edge_iter();
-            edge_cursor->set_key(graph_engine.get_edge_range(i));
+            edge_cursor->set_key_range(graph_engine.get_edge_range(i));
 
             edge found;
             edge_cursor->next(&found);
@@ -106,40 +108,34 @@ pvector<ScoreT> pagerank(GraphEngine& graph_engine,
 
 int main(int argc, char* argv[])
 {
-    cout << "Running PageRank" << endl;
+      cout << "Running PageRank" << endl;
     PageRankOpts pr_cli(argc, argv, 1e-4, 10);
     if (!pr_cli.parse_args())
     {
         return -1;
     }
 
-    graph_opts opts;
-    get_graph_opts(pr_cli, opts);
-    opts.stat_log = pr_cli.get_logdir() + "/" + opts.db_name;
+    cmdline_opts opts = pr_cli.get_parsed_opts();
+    opts.stat_log += "/" + opts.db_name;
+    //    opts.print_config("out");
+    const int THREAD_NUM = omp_get_max_threads();
 
-    const int THREAD_NUM = 8;
-    GraphEngine::graph_engine_opts engine_opts{.num_threads = THREAD_NUM,
-                                               .opts = opts};
     Times t;
     t.start();
-    GraphEngine graphEngine(engine_opts);
-    graphEngine.calculate_thread_offsets();
-    graphEngine.calculate_thread_offsets_edge_partition();
+    GraphEngine graphEngine(THREAD_NUM, opts);
+    graphEngine.calculate_thread_offsets(true);
     t.stop();
     std::cout << "Graph loaded in " << t.t_micros() << std::endl;
 
     // Now run PR
-    t.start();
-    pvector<ScoreT> score = pagerank(
-        graphEngine, THREAD_NUM, pr_cli.iterations(), pr_cli.tolerance());
-    t.stop();
-    cout << "PR  completed in : " << t.t_micros() << endl;
+    for(int i = 0; i < 10; i++) {
+        t.start();
+        pvector<ScoreT> score = pagerank(
+            graphEngine, THREAD_NUM, opts.iterations, opts.tolerance);
+        t.stop();
+        cout << "PR  completed in : " << t.t_micros() << endl;
+     }
     double sum = 0;
-    for (int i = 0; i < 30399; i++)
-    {
-        if (score[i] != std::numeric_limits<float>::infinity()) sum += score[i];
-    }
-    cout << sum << '\n';
 
     // for (int i = 30000; i < 30100; i++)
     // {
