@@ -131,14 +131,14 @@ void AdjList::init_cursors()
                              string(wiredtiger_strerror(ret)));
     }
     // node_cursor initialization
-    ret = _get_table_cursor(NODE_TABLE, &node_cursor, session, false, true);
+    ret = _get_table_cursor(NODE_TABLE, &node_cursor, session, false, false);
     if (ret != 0)
     {
         throw GraphException("Could not get a cursor to the node table:" +
                              string(wiredtiger_strerror(ret)));
     }
     // edge_cursor initialization
-    ret = _get_table_cursor(EDGE_TABLE, &edge_cursor, session, false, true);
+    ret = _get_table_cursor(EDGE_TABLE, &edge_cursor, session, false, false);
     if (ret != 0)
     {
         throw GraphException("Could not get a cursor to the edge table:" +
@@ -179,45 +179,20 @@ void AdjList::init_cursors()
 int AdjList::add_node(node to_insert)
 {
     session->begin_transaction(session, "isolation=snapshot");
-    int ret;
-
-    CommonUtil::set_key(node_cursor, to_insert.id);
-
-    if (opts.read_optimize)
-    {
-        // for testing
-        // n_cur->set_value(n_cur, to_insert.in_degree, to_insert.out_degree);
-        node_cursor->set_value(node_cursor, 0, 0);
-    }
-    else
-    {
-        node_cursor->set_value(node_cursor, "");
-    }
-
-    if ((ret = error_check_insert_txn(node_cursor->insert(node_cursor), false)))
-    {
-        return ret;
-    }
-
-    if ((ret = error_check_insert_txn(
-             add_adjlist(in_adjlist_cursor, to_insert.id), false)))
-    {
-        return ret;
-    }
-    if ((ret = error_check_insert_txn(
-             add_adjlist(out_adjlist_cursor, to_insert.id), false)))
+    int ret = add_node_in_txn(to_insert);
+    if (ret)
     {
         return ret;
     }
     session->commit_transaction(session, nullptr);
     GraphBase::increment_nodes(1);
-    return ret;
+    return 0;
 }
 
 // This function does not handle the add_node numbers
 int AdjList::add_node_in_txn(node to_insert)
 {
-    int ret;
+    int ret = 0;
     CommonUtil::set_key(node_cursor, to_insert.id);
 
     if (opts.read_optimize)
@@ -231,49 +206,19 @@ int AdjList::add_node_in_txn(node to_insert)
         node_cursor->set_value(node_cursor, "");
     }
 
-    if ((ret = error_check_insert_txn(node_cursor->insert(node_cursor), false)))
+    if ((ret = error_check_insert_txn(node_cursor->insert(node_cursor), true)))
     {
-        if (ret == WT_DUPLICATE_KEY)
-        {
-            // CommonUtil::log_msg(
-            //     "Duplicate key in add_node_in_txn. Node " +
-            //         to_string(to_insert.id) +
-            //         " already exists. : " + wiredtiger_strerror(ret),
-            //     __FILE__,
-            //     __LINE__);
-            return 0;  // this is a duplicate key, continue.
-        }
         return ret;
     }
 
     if ((ret = error_check_insert_txn(
-             add_adjlist(in_adjlist_cursor, to_insert.id), false)))
+             add_adjlist(in_adjlist_cursor, to_insert.id), true)))
     {
-        if (ret == WT_DUPLICATE_KEY)
-        {
-            CommonUtil::log_msg(
-                "Duplicate key in add_node_in_txn. Node " +
-                    to_string(to_insert.id) +
-                    " already exists. : " + wiredtiger_strerror(ret),
-                __FILE__,
-                __LINE__);
-            return 0;  // this is a duplicate key, continue.
-        }
         return ret;
     }
     if ((ret = error_check_insert_txn(
-             add_adjlist(out_adjlist_cursor, to_insert.id), false)))
+             add_adjlist(out_adjlist_cursor, to_insert.id), true)))
     {
-        if (ret == WT_DUPLICATE_KEY)
-        {
-            CommonUtil::log_msg(
-                "Duplicate key in add_adjlist. An adjlist for node " +
-                    to_string(to_insert.id) +
-                    " already exists. : " + wiredtiger_strerror(ret),
-                __FILE__,
-                __LINE__);
-            return 0;  // this is a duplicate key, continue.
-        }
         return ret;
     }
     return ret;
@@ -406,7 +351,7 @@ int AdjList::delete_adjlist(WT_CURSOR *cursor, node_id_t node_id)
 
 int AdjList::add_edge(edge to_insert, bool is_bulk_insert)
 {
-    int ret;
+    int ret = 0;
     int num_nodes_added = 0;
 
     session->begin_transaction(session, "isolation=snapshot");
@@ -447,7 +392,7 @@ int AdjList::add_edge(edge to_insert, bool is_bulk_insert)
     {
         edge_cursor->set_value(edge_cursor, 0);
     }
-    if ((ret = error_check_insert_txn(edge_cursor->insert(edge_cursor), false)))
+    if ((ret = error_check_insert_txn(edge_cursor->insert(edge_cursor), true)))
     {
         return ret;
     }
@@ -464,7 +409,7 @@ int AdjList::add_edge(edge to_insert, bool is_bulk_insert)
             edge_cursor->set_value(edge_cursor, 0);
         }
         if ((ret = error_check_insert_txn(edge_cursor->insert(edge_cursor),
-                                          false)))
+                                          true)))
         {
             return ret;
         }
@@ -478,7 +423,7 @@ int AdjList::add_edge(edge to_insert, bool is_bulk_insert)
     // Concurrency control for add_to_adjlists handled within add_to_adjlists
     ret =
         add_to_adjlists(out_adjlist_cursor, to_insert.src_id, to_insert.dst_id);
-    if (ret != 0)
+    if (ret)
     {
         return ret;
     }
@@ -1169,7 +1114,7 @@ int AdjList::add_to_adjlists(WT_CURSOR *cursor,
         to_insert);  // this needs to be converted first.
     found.degree += 1;
     ret = error_check_insert_txn(
-        CommonUtil::adjlist_to_record(session, cursor, found), false);
+        CommonUtil::adjlist_to_record(session, cursor, found), true);
     if (ret != 0)
     {
         CommonUtil::log_msg("Could not insert adjlist for " +
@@ -1372,7 +1317,7 @@ WT_CURSOR *AdjList::get_node_cursor()
     if (node_cursor == nullptr)
     {
         int ret =
-            _get_table_cursor(NODE_TABLE, &node_cursor, session, false, true);
+            _get_table_cursor(NODE_TABLE, &node_cursor, session, false, false);
         if (ret != 0)
         {
             throw GraphException("Could not get a test node cursor");
@@ -1386,7 +1331,7 @@ WT_CURSOR *AdjList::get_new_node_cursor()
 {
     WT_CURSOR *new_node_cursor = nullptr;
     int ret =
-        _get_table_cursor(NODE_TABLE, &new_node_cursor, session, false, true);
+        _get_table_cursor(NODE_TABLE, &new_node_cursor, session, false, false);
     if (ret != 0)
     {
         throw GraphException("Could not get a test node cursor");
@@ -1425,7 +1370,7 @@ WT_CURSOR *AdjList::get_in_adjlist_cursor()
     if (in_adjlist_cursor == nullptr)
     {
         int ret = _get_table_cursor(
-            IN_ADJLIST, &in_adjlist_cursor, session, false, true);
+            IN_ADJLIST, &in_adjlist_cursor, session, false, false);
         if (ret != 0)
         {
             throw GraphException("Could not get a test in_adjlist cursor");
@@ -1451,7 +1396,7 @@ WT_CURSOR *AdjList::get_out_adjlist_cursor()
     if (out_adjlist_cursor == nullptr)
     {
         int ret = _get_table_cursor(
-            OUT_ADJLIST, &out_adjlist_cursor, session, false, true);
+            OUT_ADJLIST, &out_adjlist_cursor, session, false, false);
         if (ret != 0)
         {
             throw GraphException("Could not get a test out_adjlist cursor");
@@ -1708,15 +1653,9 @@ int AdjList::error_check_insert_txn(int return_val, bool ignore_duplicate_key)
             session->rollback_transaction(session, nullptr);
             return WT_ROLLBACK;
         case WT_DUPLICATE_KEY:
-            if (!ignore_duplicate_key)
+            if (ignore_duplicate_key)
             {
-                // session->rollback_transaction(session, nullptr);
-                /*Rolling back the transaction here is not necessary if the
-                 * cursor has been opened with overwrite=false. A plain warning
-                 * is enough. */
-                // CommonUtil::log_msg(
-                //     "WT_DUPLICATE_KEY error in insert_txn", __FILE__,
-                //     __LINE__);
+                return 0;
             }
             return WT_DUPLICATE_KEY;
         case WT_NOTFOUND:

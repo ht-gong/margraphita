@@ -48,7 +48,7 @@ class EkeyInCursor : public InCursor
         // We need to position this cursor to the first record where dst >
         // OutOfBand_ID (i.e. 1) and src >= keys.start
         // reversed because (dst, src)
-        CommonUtil::ekey_set_key(cursor, (OutOfBand_ID + 1), keys.start);
+        CommonUtil::ekey_set_key(cursor, keys.start, OutOfBand_ID);
         int status;
         cursor->search_near(cursor, &status);
         if (status < 0)
@@ -326,7 +326,6 @@ class EkeyEdgeCursor : public EdgeCursor
         }
         else  // the range is empty
         {
-            std::cout << "here" << std::endl;
             // Advance the cursor to the first record
             if (cursor->next(cursor) != 0)
             {
@@ -375,7 +374,7 @@ class EkeyEdgeCursor : public EdgeCursor
 
         // If end_edge is set
         if (end_edge.src_id != UINT32_MAX)
-        {
+        {   
             // If found > end edge
             if (!(found->src_id < end_edge.src_id ||
                   ((found->src_id == end_edge.src_id) &&

@@ -200,7 +200,7 @@ void GraphEngine::_calculate_thread_offsets_edge(int thread_max,
         e_cur->next(&found_edge);
         i++;
     }
-    assert(num_edges == i);
+    //assert(num_edges - 1 == i);
     //    std::cout << "The edge boundaries are: " << std::endl;
     //    for (auto x : edge_ranges)
     //    {

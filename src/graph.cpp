@@ -131,6 +131,25 @@ void GraphBase::insert_metadata(const int key,
     }
 }
 
+void GraphBase::update_metadata(const int key,
+                                const char *value,
+                                size_t size,
+                                WT_CURSOR *cursor)
+{
+    cursor->set_key(cursor, key);
+    WT_ITEM item;
+    item.data = value;
+    item.size = size;
+    cursor->set_value(cursor, &item);
+    int ret = cursor->update(cursor);
+    if (ret != 0)
+    {
+        fprintf(stderr, "Failed to update metadata for the key %d", key);
+        fprintf(stderr, "Error: %s\n", wiredtiger_strerror(ret));
+        exit(-1);
+    }
+}
+
 /**
  * @brief Returns the metadata associated with the key param from the METADATA
  * table.
@@ -172,26 +191,27 @@ void GraphBase::dump_meta_data()
     {
         cursor->get_key(cursor, &key);
         cursor->get_value(cursor, &item);
-        std::cout <<"metadata item: " << MetadataKeyNames[key] << "\t size: "<<item.size << "\n";
-        if(key == MetadataKey::num_nodes)
+        std::cout << "metadata item: " << MetadataKeyNames[key]
+                  << "\t size: " << item.size << "\n";
+        if (key == MetadataKey::num_nodes)
         {
             node_id_t num_nodes = *(node_id_t *)item.data;
             std::cout << "num_nodes: " << num_nodes << "\n";
         }
-        if(key == MetadataKey::num_edges)
+        if (key == MetadataKey::num_edges)
         {
             edge_id_t num_edges = *(edge_id_t *)item.data;
             std::cout << "num_edges: " << num_edges << "\n";
         }
-        if(key == MetadataKey::max_node_id)
+        if (key == MetadataKey::max_node_id)
         {
             node_id_t max_node_id = *(node_id_t *)item.data;
             std::cout << "max_node_id: " << max_node_id << "\n";
         }
-        if(key == MetadataKey::min_node_id)
+        if (key == MetadataKey::min_node_id)
         {
             node_id_t min_node_id = *(node_id_t *)item.data;
-            std::cout << "min_node_id: " << min_node_id<< "\n";
+            std::cout << "min_node_id: " << min_node_id << "\n";
         }
     }
     cursor->close(cursor);
@@ -212,14 +232,14 @@ int GraphBase::_get_table_cursor(const std::string &table,
                                  WT_CURSOR **cursor,
                                  WT_SESSION *session,
                                  bool is_random,
-                                 bool prevent_overwrite)
+                                 bool overwrite)
 {
     char config[256];
     snprintf(config,
              sizeof(config),
              "next_random=%s,overwrite=%s",
              is_random ? "true" : "false",
-             prevent_overwrite ? "false" : "true");
+             overwrite ? "true" : "false");
     char table_name[256];
     snprintf(table_name, sizeof(table_name), "table:%s", table.c_str());
     if (session->open_cursor(session, table_name, nullptr, config, cursor) != 0)
@@ -372,24 +392,24 @@ int GraphBase::_get_index_cursor(const std::string &table_name,
 void GraphBase::sync_metadata()
 {
     node_id_t temp = GraphBase::get_num_nodes();
-    insert_metadata(MetadataKey::num_nodes,
+    update_metadata(MetadataKey::num_nodes,
                     (char *)&temp,
                     sizeof(node_id_t),
                     metadata_cursor);
     temp = GraphBase::get_num_edges();
-    insert_metadata(MetadataKey::num_edges,
+    update_metadata(MetadataKey::num_edges,
                     (char *)&temp,
                     sizeof(edge_id_t),
                     metadata_cursor);
 
     auto max_node = get_max_node_id();
-    insert_metadata(MetadataKey::max_node_id,
+    update_metadata(MetadataKey::max_node_id,
                     (char *)&max_node,
                     sizeof(node_id_t),
                     metadata_cursor);
 
     auto min_node = get_min_node_id();
-    insert_metadata(MetadataKey::min_node_id,
+    update_metadata(MetadataKey::min_node_id,
                     (char *)&min_node,
                     sizeof(node_id_t),
                     metadata_cursor);

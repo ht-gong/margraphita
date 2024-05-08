@@ -23,6 +23,11 @@ class GraphBase
                                 const char *value,
                                 size_t size,
                                 WT_CURSOR *cursor);
+
+    static void update_metadata(const int key,
+                                const char *value,
+                                size_t size,
+                                WT_CURSOR *cursor);
     void get_metadata(int key, WT_ITEM &item, WT_CURSOR *metadata_cursor);
     void dump_meta_data();
     virtual node get_node(node_id_t node_id) = 0;

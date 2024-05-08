@@ -2,6 +2,7 @@
 #define BASE_COMMON
 
 #include <wiredtiger.h>
+
 #include <cassert>
 #include <cstdarg>
 #include <cstdio>
@@ -41,7 +42,6 @@ class CommonUtil
                                    const std::string &name);
 
     static void check_graph_params(const graph_opts &params);
-
 
     static void log_msg(std::string_view message,
                         std::string_view file,
@@ -130,7 +130,6 @@ inline void CommonUtil::set_key(WT_CURSOR *cursor,
     cursor->set_key(cursor, &k1, &k2);
 }
 
-
 inline int CommonUtil::get_key(WT_CURSOR *cursor, node_id_t *key)
 {
     WT_ITEM k = {0};
@@ -152,7 +151,6 @@ inline int CommonUtil::get_key(WT_CURSOR *cursor,
     *key2 = __builtin_bswap32(b);
     return ret;
 }
-
 
 inline int CommonUtil::node_to_record(WT_CURSOR *cursor,
                                       node to_insert,
@@ -251,11 +249,11 @@ inline int CommonUtil::adjlist_to_record(WT_SESSION *session,
     ret = cursor->update(cursor);
     if (ret)
     {
-        CommonUtil::log_msg("Error inserting into adjlist table" +
-                                std::to_string(ret) + " - " +
-                                wiredtiger_strerror(ret),
-                            __FILE__,
-                            __LINE__);
+        // CommonUtil::log_msg("Error inserting into adjlist table" +
+        //                         std::to_string(ret) + " - " +
+        //                         wiredtiger_strerror(ret),
+        //                     __FILE__,
+        //                     __LINE__);
     }
     cursor->reset(cursor);
     return 0;

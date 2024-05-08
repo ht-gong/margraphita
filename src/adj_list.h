@@ -165,7 +165,6 @@ class AdjOutCursor : public OutCursor
         do
         {
             CommonUtil::get_key(cursor, &curr_key);
-
             if (keys.end != UINT32_MAX && curr_key > keys.end)
             {
                 no_next(found);
@@ -178,6 +177,7 @@ class AdjOutCursor : public OutCursor
             if (cursor->next(cursor) != 0)
             {
                 has_next = false;
+                return;
             }
         } while (found->degree == 0 && all_nodes == false);
     }
@@ -309,7 +309,7 @@ class AdjEdgeCursor : public EdgeCursor
         start_edge = range.start;
         end_edge = range.end;
         is_first = false;
-
+        
         // Advances the cursor to the first valid record in range
         if (start_edge.src_id != UINT32_MAX && start_edge.dst_id != UINT32_MAX)
         {
@@ -344,6 +344,7 @@ class AdjEdgeCursor : public EdgeCursor
 
     void next(edge *found) override
     {
+        
         if (!has_next)
         {
             no_next(found);
@@ -354,7 +355,8 @@ class AdjEdgeCursor : public EdgeCursor
 
         // If end_edge is set
         if (end_edge.src_id != UINT32_MAX)
-        {
+        {   
+            
             // If found.src > end_edge.src or the edge is such that the source
             // is less than end.src but the destination is greater than end.dst
             if ((found->src_id > end_edge.src_id) ||
@@ -366,6 +368,7 @@ class AdjEdgeCursor : public EdgeCursor
         {
             CommonUtil::record_to_edge(cursor, found);
         }
+       
         if (cursor->next(cursor) != 0)
         {
             has_next = false;

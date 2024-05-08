@@ -1,7 +1,9 @@
 #ifndef COMMON_DEFS_H
 #define COMMON_DEFS_H
 
-#include <string>
+#include <wiredtiger.h>
+
+#include <cstring>
 #include <vector>
 #define MAKE_EKEY(x) ((x) + 1)
 #define OG_KEY(x) ((x)-1)
@@ -158,4 +160,82 @@ typedef struct adjlist
         degree = 0;
     }
 } adjlist;
+
+class adjbuf  // Manual mem management for adj_list property store
+{
+   private:
+   public:
+    uint64_t length = 0;
+    uint64_t size = 0;
+    std::vector<uint64_t> offsets;
+    void *data = nullptr;
+    adjbuf() { offsets.reserve(100); }
+
+    void read_to_adjbuf(void *ptr)
+    {
+        uint64_t *cur = (uint64_t *)ptr;
+        length = *cur;
+        cur += 1;
+
+        size = *cur;
+        cur += 1;
+
+        offsets.assign(cur, cur + length);
+        cur += length;
+
+        data = malloc(size);
+        memcpy(data, cur, size);
+    }
+
+    WT_ITEM write_to_item()
+    {
+        char *mem = (char *)malloc(sizeof(uint64_t) * ((length) + 2) + size);
+        memcpy(mem, &length, sizeof(uint64_t));
+        mem += sizeof(uint64_t);
+        memcpy(mem, &size, sizeof(uint64_t));
+        mem += sizeof(uint64_t);
+
+        memcpy(mem, &offsets[0], length);
+        mem += sizeof(uint64_t) * length;
+
+        memcpy(mem, data, size);
+
+        return WT_ITEM{.data = mem,
+                       .size = sizeof(uint64_t) * ((length) + 2) + size};
+    }
+
+    // TODO: make into binary search
+    void push_back_adjbuf(void *property, int prop_size)
+    {
+        length += 1;
+        offsets.push_back(size);
+        size += prop_size;
+
+        void *oldbuf = data;
+
+        data = malloc(size);
+        memcpy(data, oldbuf, offsets.back());
+        memcpy(((char *)data) + offsets.back(), property, prop_size);
+
+        free(oldbuf);
+    }
+
+    // TODO: make into binary search
+    void delete_from_adjbuf(int offset)
+    {
+        length--;
+        char *data_c = (char *)data;
+        memmove(data_c + offsets[offset + 1],
+                data_c + offsets[offset],
+                size - offsets[offset + 1]);
+        for (int i = offset + 2; i < size; i++)
+        {
+            offsets[i] -= offsets[offset + 1] - offsets[offset];
+        }
+        size -= offsets[offset + 1] - offsets[offset];
+
+        offsets.erase(offsets.begin() + offset);
+    }
+};
+
 #endif
